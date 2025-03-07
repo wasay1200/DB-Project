@@ -7,9 +7,7 @@ function App() {
       <h1>DB Project</h1>
       <p align="left" className="Body">Group members: 
         <ul align="left">
-          <li>Abdul Wasay</li>
-          <li>Shawaiz Ali</li>
-          <li>Hassan Raza</li>
+          <li>Testing</li>
         </ul>
       </p>
     </div>
