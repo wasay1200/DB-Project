@@ -13,8 +13,10 @@ VS Code or your preferred code editor
 ### Repository Setup
 
 Clone the repository:
-bashCopygit clone [repository-url]
+```
+clone [repository-url]
 cd [project-folder]
+```
 
 
 ### Backend Setup
@@ -27,7 +29,7 @@ npm install
 ```
 3. Environment Configuration
 Create a .env file in the backend directory using the provided template:
-bashCopy# Copy the example environment file
+Copy the example environment file
 ```
 cp .env.example .env
 ```
