@@ -1,5 +1,13 @@
 {
-  "name": "db-project",
+  "dependencies": {
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "msnodesqlv8": "^4.5.0",
+    "mssql": "^11.0.1"
+  },
+  "name": "restaurantdb",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -8,8 +16,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
-  "dependencies": {
-    "express": "^4.21.2"
-  }
+  "description": ""
 }
