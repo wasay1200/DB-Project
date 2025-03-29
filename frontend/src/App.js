@@ -28,6 +28,32 @@ function App() {
         <br/>
         Query2:
         <button onClick={() => fetchData('tables')}>Select Tables</button>
+        <br/>
+        Query3:
+        <button onClick={() => fetchData('reservations')}>Select Reservations</button>
+        <br/>
+        Query4:
+        <button onClick={() => fetchData('menu')}>Select Menu</button>
+        <br/>
+        Query5:
+        <button onClick={() => fetchData('orders')}>Select Orders</button>
+        <br/>
+        Query6:
+        <button onClick={() => fetchData('order-items')}>Select Order-items</button>
+        <br/>
+        Query7:
+        <button onClick={() => fetchData('dish-reviews')}>Select Dish-reviews</button>
+        <br/>
+        Query8:
+        <button onClick={() => fetchData('staff')}>Select Staff</button>
+        <br/>
+        Query9:
+        <button onClick={() => fetchData('staff-ratings')}>Select Staff-ratings</button>
+        <br/>
+        Query10:
+        <button onClick={() => fetchData('qr-codes')}>Select QR_Codes</button>
+        <br/>
+     
       </p>
 
       {/* Display fetched data */}
