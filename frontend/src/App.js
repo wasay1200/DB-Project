@@ -1,15 +1,42 @@
-
+import { useState } from 'react';
 import './App.css';
 
 function App() {
+  const [data, setData] = useState(null);
+
+  // Function to fetch data from API
+  const fetchData = async (endpoint) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/${endpoint}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch data');
+      }
+      const result = await response.json();
+      setData(result); // Store data in state
+      console.log(result); // Log data to console
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
   return (
     <div className="App">
       <h1>DB Project</h1>
-      <p align="left" className="Body">Group members: 
-        <ul align="left">
-          <li>Testing</li>
-        </ul>
+      <p align="left" className="Body">
+        Query1: 
+        <button onClick={() => fetchData('users')}>Select Users</button>
+        <br/>
+        Query2:
+        <button onClick={() => fetchData('tables')}>Select Tables</button>
       </p>
+
+      {/* Display fetched data */}
+      {data && (
+        <div>
+          <h2>Results:</h2>
+          <pre>{JSON.stringify(data, null, 2)}</pre>
+        </div>
+      )}
     </div>
   );
 }
