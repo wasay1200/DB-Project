@@ -123,16 +123,34 @@ const Reservations = {
             console.error('SQL error', err);
             return err;
         }
+    },
+
+    async  CreateReservation( user_id,table_id ,reservation_date,time_slot)
+    {
+        try {
+            const pool = await poolPromise;
+            const result = await pool.request().input('user_id', sql.Int, user_id).input('table_id',sql.Int,table_id).
+            input('reservation_date', sql.Date,reservation_id).input('time_slot', sql.Time,time_slot).query(` INSERT INTO Reservations (user_id, table_id, reservation_date, time_slot, status)
+            VALUES (@user_id, @table_id, @reservation_date, @time_slot, 'confirmed')`);
+            return result.recordset;
+        } catch (err) {
+            console.error('SQL error', err);
+            return err;
+        }  
+    },
+
+    async  UpdateReservationStatus(reservation_id,status )
+    {
+        try {
+            const pool = await poolPromise;
+            const result = await pool.request().input('reservation_id', sql.Int, reservation_id).input('status',sql.NVarchar,status)
+            .query(`    UPDATE Reservations SET status = @status WHERE reservation_id = @reservation_id`);
+            return result.recordset;
+        } catch (err) {
+            console.error('SQL error', err);
+            return err;
+        }  
     }
-
-
-
-
-
-
-
-
-
 
 };
 
