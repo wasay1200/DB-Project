@@ -8,7 +8,7 @@ app.use(cors());
 //app.use(bodyParser.json());
 
 const menuRoute = require('./routes/menuRoute'); // adjust path as needed
-app.use('/api/menu', someRoute);
+app.use('/api/menu', menuRoute);
 
 
 app.get('/', (req, res) => {
