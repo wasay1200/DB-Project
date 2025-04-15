@@ -34,7 +34,8 @@ CREATE TABLE Reservations (
 CREATE TABLE Menu (
     menu_id INT IDENTITY(1,1) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    price DECIMAL(10,2) NOT NULL
+    price DECIMAL(10,2) NOT NULL,
+    category VARCHAR(50) CHECK (category IN ('appetizer', 'main course', 'dessert', 'beverage')) NOT NULL
 );
 
 CREATE TABLE Orders (
@@ -110,10 +111,12 @@ INSERT INTO Reservations (user_id, table_id, reservation_date, time_slot, status
 GO
 
 -- Insert Data into Menu
-INSERT INTO Menu (name, price) VALUES
-('Margherita Pizza', 12.99),
-('Pasta Alfredo', 14.99),
-('Caesar Salad', 8.99);
+INSERT INTO Menu (name, price,category) VALUES
+('Margherita Pizza', 12.99,'appetizer'),
+('Spaghetti Bolognese', 13.99,'main course'),
+('Garlic Bread', 4.99,'appetizer'),
+('Pasta Alfredo', 14.99,'main course'),
+('Caesar Salad', 8.99,'appetizer');
 GO
 
 -- Insert Data into Orders
