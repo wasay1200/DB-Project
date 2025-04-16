@@ -84,7 +84,7 @@ const Reservations = {
                 )
                 ORDER BY ABS(t.capacity - @partySize) ASC`);
 
-            return result;
+            return result.recordset;
         } catch (err) {
             console.error('SQL error', err);
             return err;
