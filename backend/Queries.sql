@@ -12,7 +12,7 @@ CREATE PROCEDURE GetUserByEmail
 AS
 BEGIN
     -- Check if user exists by email
-    SELECT user_id FROM Users WHERE email = @email;
+    SELECT * FROM Users WHERE email = @email;
 END
 GO
 
