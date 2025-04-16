@@ -147,14 +147,14 @@ BEGIN
     -- Retrieve menu items with their average ratings and review count
     -- Grouped by menu item details
     -- Ordered by category and name
-    SELECT 
-        m.*,
-        COALESCE(AVG(dr.rating), 0) AS average_rating,
-        COUNT(dr.review_id) AS review_count
-    FROM Menu m
-    LEFT JOIN Dish_Reviews dr ON m.menu_id = dr.menu_id
-    GROUP BY m.menu_id, m.name
-    ORDER BY m.category, m.name;
+   SELECT 
+            m.name, m.price,
+           COALESCE(AVG(dr.rating), 0) AS average_rating,
+           COUNT(dr.review_id) AS review_count
+           FROM Menu m
+           LEFT JOIN Dish_Reviews dr ON m.menu_id = dr.menu_id
+           GROUP BY m.name,m.price
+           ORDER BY m.name;
 END
 GO
 
