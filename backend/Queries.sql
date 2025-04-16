@@ -147,14 +147,14 @@ BEGIN
     -- Retrieve menu items with their average ratings and review count
     -- Grouped by menu item details
     -- Ordered by category and name
-    SELECT 
-        m.*,
-        COALESCE(AVG(dr.rating), 0) AS average_rating,
-        COUNT(dr.review_id) AS review_count
-    FROM Menu m
-    LEFT JOIN Dish_Reviews dr ON m.menu_id = dr.menu_id
-    GROUP BY m.menu_id, m.name
-    ORDER BY m.category, m.name;
+   SELECT 
+            m.name, m.price,
+           COALESCE(AVG(dr.rating), 0) AS average_rating,
+           COUNT(dr.review_id) AS review_count
+           FROM Menu m
+           LEFT JOIN Dish_Reviews dr ON m.menu_id = dr.menu_id
+           GROUP BY m.name,m.price
+           ORDER BY m.name;
 END
 GO
 
@@ -168,8 +168,8 @@ AS
 BEGIN
     -- Insert a new dish review with current timestamp
     -- Returns the newly created review's ID
-    INSERT INTO Dish_Reviews (user_id, menu_id, rating)
-    VALUES (@user_id, @menu_id, @rating);
+    INSERT INTO Dish_Reviews (user_id, menu_id, rating,review_text)
+    VALUES (@user_id, @menu_id, @rating,@comment);
     
     SELECT SCOPE_IDENTITY() AS review_id;
 END
@@ -179,7 +179,6 @@ CREATE PROCEDURE GetDishReviews
 AS
 BEGIN
     -- Retrieve dish reviews with associated user and menu item information
-    -- Sorted by most recent review
     SELECT 
         dr.*, u.name AS reviewer_name, m.name AS dish_name
     FROM Dish_Reviews dr
@@ -222,8 +221,7 @@ GO
 CREATE PROCEDURE CreateOrderItem
     @order_id INT,
     @menu_id INT,
-    @quantity INT,
-    @item_price DECIMAL(10,2)
+    @quantity INT
 AS
 BEGIN
     -- Insert order items
@@ -237,15 +235,14 @@ CREATE PROCEDURE GetUserOrders
 AS
 BEGIN
     -- Retrieve user's orders with item count
-    -- Sorted by most recent order
+ 
     SELECT 
-        o.order_id, o.total_price, o.order_date,
+        o.order_id, o.total_price,
         COUNT(oi.order_item_id) AS item_count
     FROM Orders o
     JOIN Order_Items oi ON o.order_id = oi.order_id
     WHERE o.user_id = @user_id
-    GROUP BY o.order_id, o.total_price, o.order_date
-    ORDER BY o.order_date DESC;
+    GROUP BY o.order_id, o.total_price
 END
 GO
 
