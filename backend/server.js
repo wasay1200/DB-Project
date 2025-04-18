@@ -2,9 +2,11 @@ const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const {sql, poolPromise} = require('./db.js');
+const {sql, poolPromise} = require('./config/db.js'); //set urs to./config/db.js
 const PORT = 5000;
 app.use(cors());
+app.use(express.json());
+
 //app.use(bodyParser.json());
 
 const menuRoute = require('./routes/menuRoute'); // adjust path as needed
