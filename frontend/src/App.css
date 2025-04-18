@@ -1,6 +1,10 @@
 .App {
   text-align: center;
+  padding: 40px 20px;
+  max-width: 1000px;
+  margin: 0 auto;
 }
+
 
 .App-logo {
   height: 40vmin;
@@ -40,4 +44,26 @@
 body{
   background-color: #282c34;
   color: white;
+}
+
+.buttons{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 15px; /* Increase gap to add more space between buttons */
+    margin: 30px 0;
+  
+}
+.result{
+  background-color: #1162b2;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 15px;
+ 
+  transition: 0.2s ease-in-out;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  align-self:"middle";
+ 
 }

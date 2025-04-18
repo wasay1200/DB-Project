@@ -22,10 +22,10 @@ function App() {
   return (
     <div className="App">
       <h1>DB Project</h1>
-      <p align="left" className="Body">
+      <p align="middle" className="buttons">
         Query1: 
         <button onClick={() => fetchData('dish-reviews')}>Select Dish-reviews</button>
-        <br/>
+       
         Query2:
         <button onClick={() => fetchData('dish-reviews/detailed')}>Select Detailed Dish-reviews</button>
         <br/>
@@ -58,7 +58,7 @@ function App() {
 
       {/* Display fetched data */}
       {data && (
-        <div>
+        <div className="result">
           <h2>Results:</h2>
           <pre>{JSON.stringify(data, null, 2)}</pre>
         </div>
