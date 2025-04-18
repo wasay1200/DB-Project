@@ -42,11 +42,11 @@ const StaffRatings = {
     async CreateStaffRatings(staff_id ,user_id ,rating ,feedback ) {
         try {
             const pool = await poolPromise;
-            const result = await pool.request().input('staff_id', sql.Int,staff_id )
+            const result = await pool.request().input('staff_id', sql.Int,staff_id ).
             input('user_id', sql.Int,user_id ).input('rating', sql.Int,rating).input('feedback', sql.NVarChar,feedback ).
             query(`INSERT INTO Staff_Ratings (staff_id, user_id, rating, feedback)
             VALUES (@staff_id, @user_id, @rating, @feedback)`);
-            return result.recordset;
+            return result;
         } catch (err) {
             console.error('SQL error', err);
             return err;
