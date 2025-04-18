@@ -24,34 +24,34 @@ function App() {
       <h1>DB Project</h1>
       <p align="left" className="Body">
         Query1: 
-        <button onClick={() => fetchData('users')}>Select Users</button>
+        <button onClick={() => fetchData('dish-reviews')}>Select Dish-reviews</button>
         <br/>
         Query2:
-        <button onClick={() => fetchData('tables')}>Select Tables</button>
+        <button onClick={() => fetchData('dish-reviews/detailed')}>Select Detailed Dish-reviews</button>
         <br/>
         Query3:
-        <button onClick={() => fetchData('reservations')}>Select Reservations</button>
+        <button onClick={() => fetchData('menu')}>Select Menu</button>
         <br/>
         Query4:
-        <button onClick={() => fetchData('menu')}>Select Menu</button>
+        <button onClick={() => fetchData('menu/with-ratings')}>Select Menu with ratings</button>
         <br/>
         Query5:
         <button onClick={() => fetchData('orders')}>Select Orders</button>
         <br/>
         Query6:
-        <button onClick={() => fetchData('order-items')}>Select Order-items</button>
+        <button onClick={() => fetchData('orders/items')}>Select Order-items</button>
         <br/>
         Query7:
-        <button onClick={() => fetchData('dish-reviews')}>Select Dish-reviews</button>
+        <button onClick={() => fetchData('reservations')}>Select Reservations</button>
         <br/>
         Query8:
-        <button onClick={() => fetchData('staff')}>Select Staff</button>
+        <button onClick={() => fetchData('reservations/users')}>Select Users</button>
         <br/>
         Query9:
-        <button onClick={() => fetchData('staff-ratings')}>Select Staff-ratings</button>
+        <button onClick={() => fetchData('reservations/tables')}>Select Tables</button>
         <br/>
         Query10:
-        <button onClick={() => fetchData('qr-codes')}>Select QR_Codes</button>
+        <button onClick={() => fetchData('staff-ratings')}>Select Staff Ratings</button>
         <br/>
      
       </p>
