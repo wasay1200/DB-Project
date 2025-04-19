@@ -27,8 +27,8 @@ const Order = {
         try {
             const pool = await poolPromise;
             const result = await pool.request().input('user_id', sql.Int, user_id).input('reservation_id', sql.Int, reservation_id)
-                .input('total_price', sql.Decimal, total_price).query(`INSERT INTO Orders (user_id, reservation_id, total_price, order_date, status)
-             VALUES (@user_id, @reservation_id, @total_price, GETDATE(), 'pending')`);
+                .input('total_price', sql.Decimal, total_price).query(`INSERT INTO Orders (user_id, reservation_id, total_price)
+             VALUES (@user_id, @reservation_id, @total_price)`);
             return result.recordset;
         } catch (err) {
             console.error('SQL error', err);
@@ -54,13 +54,12 @@ const Order = {
             const pool = await poolPromise;
             const result = await pool.request().input('user_id', sql.Int, user_id)
                 .query(`SELECT 
-                        o.order_id, o.total_price, o.order_date,
+                        o.order_id, o.total_price,
                         COUNT(oi.order_item_id) AS item_count
                         FROM Orders o
                         JOIN Order_Items oi ON o.order_id = oi.order_id
                         WHERE o.user_id = @user_id
-                        GROUP BY o.order_id, o.total_price, o.order_date
-                        ORDER BY o.order_date DESC`);
+                        GROUP BY o.order_id, o.total_price`);
             return result.recordset;
         } catch (err) {
             console.error('SQL error', err);
@@ -77,18 +76,6 @@ const Order = {
                 FROM Orders o
                 JOIN Users u ON o.user_id = u.user_id
                 WHERE o.order_id = @order_id`);
-            return result.recordset;
-        } catch (err) {
-            console.error('SQL error', err);
-            return err;
-        }
-    },
-
-    async UpdateOrderStatus(order_id, status) {
-        try {
-            const pool = await poolPromise;
-            const result = await pool.request().input('order_id', sql.Int, order_id).input('status', sql.NVarChar, status)
-                .query(`UPDATE Orders SET status = @status WHERE order_id = @order_id`);
             return result.recordset;
         } catch (err) {
             console.error('SQL error', err);

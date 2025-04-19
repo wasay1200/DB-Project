@@ -20,7 +20,5 @@ router.get('/user/:user_id', OrderController.getUserOrders);
 // Get details for a specific order
 router.get('/:order_id', OrderController.getOrderDetails);
 
-// Update order status
-router.put('/:order_id/status', OrderController.updateOrderStatus);
 
 module.exports = router;

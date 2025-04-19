@@ -155,44 +155,6 @@ const OrderController = {
                 error: error.message
             });
         }
-    },
-
-    // Update order status
-    async updateOrderStatus(req, res) {
-        try {
-            const { order_id } = req.params;
-            const { status } = req.body;
-            
-            // Validate required fields
-            if (!order_id || !status) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Please provide order_id and status'
-                });
-            }
-            
-            // Validate status value
-            const validStatuses = ['pending', 'completed', 'cancelled'];
-            if (!validStatuses.includes(status)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Status must be one of: pending, completed, cancelled'
-                });
-            }
-            
-            await Order.UpdateOrderStatus(parseInt(order_id), status);
-            res.status(200).json({
-                success: true,
-                message: `Order status updated to ${status} successfully`
-            });
-        } catch (error) {
-            console.error('Error in updateOrderStatus controller:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Error updating order status',
-                error: error.message
-            });
-        }
     }
 };
 

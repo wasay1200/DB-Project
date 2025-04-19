@@ -211,8 +211,8 @@ CREATE PROCEDURE CreateOrder
 AS
 BEGIN
     -- Insert a new order with pending status
-    INSERT INTO Orders (user_id, reservation_id, total_price, order_date, status)
-    VALUES (@user_id, @reservation_id, @total_price, GETDATE(), 'pending');
+    INSERT INTO Orders (user_id, reservation_id, total_price)
+    VALUES (@user_id, @reservation_id, @total_price);
     
     SELECT SCOPE_IDENTITY() AS order_id;
 END
@@ -263,17 +263,6 @@ BEGIN
     FROM Order_Items oi
     JOIN Menu m ON oi.menu_id = m.menu_id
     WHERE oi.order_id = @order_id;
-END
-GO
-
-CREATE PROCEDURE UpdateOrderStatus
-    @order_id INT,
-    @status NVARCHAR(20)
-AS
-BEGIN
-    -- Update the status of a specific order
-    UPDATE Orders SET status = @status WHERE order_id = @order_id;
-    SELECT @@ROWCOUNT AS affected_rows;
 END
 GO
 
