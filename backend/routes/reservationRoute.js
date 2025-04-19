@@ -13,7 +13,7 @@ router.post('/users', ReservationController.createUser);
 // Table routes
 router.get('/tables', ReservationController.getAllTables);
 router.get('/available-tables', ReservationController.getAvailableTables);
-router.post('/check-availability', ReservationController.checkTableAvailability);
+router.get('/check-availability', ReservationController.checkTableAvailability);
 
 // Reservation management routes 
 router.get('/by-email/:email', ReservationController.getReservationsByEmail);

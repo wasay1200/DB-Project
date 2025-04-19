@@ -125,8 +125,7 @@ const ReservationController = {
     // Get available tables
     async getAvailableTables(req, res) {
         try {
-            const { date, time, partySize } = req.query;
-            
+            const { date, time, partySize } = req.query; 
             // Validate required fields
             if (!date || !time || !partySize) {
                 return res.status(400).json({
@@ -134,8 +133,20 @@ const ReservationController = {
                     message: 'Please provide date, time, and partySize'
                 });
             }
-            
-            const result = await Reservations.GetAvailableTables(date, time, parseInt(partySize));
+            // Convert '12:12:12' to a Date object with only the time portion
+const timeParts = time.split(':');
+const timeObject = new Date();
+timeObject.setHours(parseInt(timeParts[0]));
+timeObject.setMinutes(parseInt(timeParts[1]));
+timeObject.setSeconds(parseInt(timeParts[2] || 0));
+
+// console.log('>>> GetAvailableTables() Params -->', {
+//     date,
+//     time: timeObject.toTimeString().split(' ')[0],
+//     partySize
+// });
+            const result = await Reservations.GetAvailableTables(date, timeObject, parseInt(partySize));
+            //console.log('SQL Query Result:', result);
             if (result.recordset && result.recordset.length === 0) {
                 return res.status(404).json({
                     success: false,
@@ -145,7 +156,7 @@ const ReservationController = {
             
             res.status(200).json({
                 success: true,
-                data: result.recordset
+                data: result
             });
         } catch (error) {
             console.error('Error in getAvailableTables controller:', error);
@@ -160,8 +171,7 @@ const ReservationController = {
     // Check table availability
     async checkTableAvailability(req, res) {
         try {
-            const { table_id, reservation_date, time_slot } = req.body;
-            
+            const { table_id, reservation_date, time_slot } = req.query;
             // Validate required fields
             if (!table_id || !reservation_date || !time_slot) {
                 return res.status(400).json({
@@ -211,7 +221,11 @@ const ReservationController = {
     async createReservation(req, res) {
         try {
             const { user_id, table_id, reservation_date, time_slot } = req.body;
-            
+            const timeParts = time_slot.split(':');
+const timeObject = new Date();
+timeObject.setHours(parseInt(timeParts[0]));
+timeObject.setMinutes(parseInt(timeParts[1]));
+timeObject.setSeconds(parseInt(timeParts[2] || 0));
             // Validate required fields
             if (!user_id || !table_id || !reservation_date || !time_slot) {
                 return res.status(400).json({
@@ -220,7 +234,7 @@ const ReservationController = {
                 });
             }
             
-            const result = await Reservations.CreateReservation(user_id, table_id, reservation_date, time_slot);
+            const result = await Reservations.CreateReservation(user_id, table_id, reservation_date, timeObject);
             res.status(201).json({
                 success: true,
                 message: 'Reservation created successfully',
@@ -251,15 +265,16 @@ const ReservationController = {
             }
             
             // Validate status value
-            const validStatuses = ['confirmed', 'cancelled', 'completed'];
+            const validStatuses = ['confirmed', 'cancelled', 'pending'];
             if (!validStatuses.includes(status)) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Status must be one of: confirmed, cancelled, completed'
+                    message: 'Status must be one of: confirmed, cancelled, pending'
                 });
             }
             
             const result = await Reservations.UpdateReservationStatus(reservation_id, status);
+           // console.log("Rows affected:", result.rowsAffected);
             res.status(200).json({
                 success: true,
                 message: `Reservation status updated to ${status} successfully`

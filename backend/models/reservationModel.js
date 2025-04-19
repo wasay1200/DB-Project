@@ -43,7 +43,8 @@ const Reservations = {
             const pool = await poolPromise;
             const result = await pool.request().input('name', sql.NVarChar, name).input('email',
                 sql.NVarChar, email).input('password', sql.NVarChar, password).input('role', sql.NVarChar,
-                    role).query('INSERT INTO Users (name, email, password, role) VALUES (@name, @email, @password, @role)');
+                    role).query(`INSERT INTO Users (name, email, password, role) VALUES (@name, @email, @password, @role);
+                        `);
             return result;
         } catch (err) {
             console.error('SQL error', err);
@@ -63,10 +64,10 @@ const Reservations = {
     },
 
     async GetAvailableTables(date, time, partySize) {
-        try {
+        try { 
             const pool = await poolPromise;
             const result = await pool.request().input('date', sql.NVarChar, date)
-                .input('time', sql.Time, time)
+            .input('time', sql.Time, time)
                 .input('partySize', sql.Int, partySize)
                 .query(`SELECT 
                     t.*,
@@ -93,9 +94,12 @@ const Reservations = {
 
     async CheckTableAvailability(table_id, reservation_date, time_slot) {
         try {
+            console.log('tableid:',table_id,'date:',reservation_date,'time:',time_slot);
             const pool = await poolPromise;
-            const result = await pool.request().input('table_id', sql.Int, table_id).input('reservation_date', sql.Date, reservation_date)
-                .input('time_slot', sql.Time.time_slot).query(`SELECT COUNT(*) AS reservation_count FROM Reservations 
+            const result = await pool.request().
+            input('table_id', sql.Int, table_id).
+            input('reservation_date', sql.Date, reservation_date)
+           .input('time_slot', sql.Time.time_slot).query(`SELECT COUNT(*) AS reservation_count FROM Reservations 
                         WHERE table_id = @table_id 
                         AND reservation_date = @reservation_date 
                         AND time_slot = @time_slot 
@@ -125,25 +129,43 @@ const Reservations = {
         }
     },
 
-    async  CreateReservation( user_id,table_id ,reservation_date,time_slot)
-    {
+    async CreateReservation(user_id, table_id, reservation_date, time_slot) {
         try {
             const pool = await poolPromise;
-            const result = await pool.request().input('user_id', sql.Int, user_id).input('table_id',sql.Int,table_id).
-            input('reservation_date', sql.Date,reservation_id).input('time_slot', sql.Time,time_slot).query(` INSERT INTO Reservations (user_id, table_id, reservation_date, time_slot, status)
-            VALUES (@user_id, @table_id, @reservation_date, @time_slot, 'confirmed')`);
-            return result.recordset;
+            const result = await pool.request()
+                .input('user_id', sql.Int, user_id)
+                .input('table_id', sql.Int, table_id)
+                .input('reservation_date', sql.Date, reservation_date)
+                .input('time_slot', sql.Time, time_slot)
+                .query(`
+                    INSERT INTO Reservations (user_id, table_id, reservation_date, time_slot, status)
+                    VALUES (@user_id, @table_id, @reservation_date, @time_slot, 'confirmed');
+    
+                    SELECT SCOPE_IDENTITY() AS reservation_id;
+                `);
+    
+            const reservation_id = result.recordset[0].reservation_id;
+    
+            return {
+                reservation_id,
+                user_id,
+                table_id,
+                reservation_date,
+                time_slot,
+                status: 'confirmed'
+            };
         } catch (err) {
             console.error('SQL error', err);
-            return err;
-        }  
-    },
+            throw err;
+        }
+    },    
 
     async  UpdateReservationStatus(reservation_id,status )
     {
         try {
             const pool = await poolPromise;
-            const result = await pool.request().input('reservation_id', sql.Int, reservation_id).input('status',sql.NVarchar,status)
+            const result = await pool.request().input('reservation_id', sql.Int, parseInt(reservation_id))
+            .input('status',sql.NVarChar,status)
             .query(`    UPDATE Reservations SET status = @status WHERE reservation_id = @reservation_id`);
             return result.recordset;
         } catch (err) {
