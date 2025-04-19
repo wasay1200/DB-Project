@@ -12,8 +12,8 @@ const DishReviews = {
         try{
         const pool = await poolPromise;
         const result = await pool.request().input('user_id', sql.Int, user_id).input('menu_id', sql.Int, menu_id).
-        input('rating', sql.Int, rating).input('comment', sql.NVarChar,comment).query(`INSERT INTO Dish_Reviews (user_id, menu_id, rating)
-        VALUES (@user_id, @menu_id, @rating)`);
+        input('rating', sql.Int, rating).input('comment', sql.NVarChar,comment).query(`INSERT INTO Dish_Reviews (user_id, menu_id, rating, review_text)
+        VALUES (@user_id, @menu_id, @rating, @comment)`);
         return result.recordset;
         }
         catch (err) {
