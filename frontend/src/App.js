@@ -9,10 +9,18 @@ function App() {
   const [tables, setTables] = useState([]);
   const [availableTables, setAvailableTables] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [selectedRatingFilter, setSelectedRatingFilter] = useState('all');
   const [userReservations, setUserReservations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewForm, setReviewForm] = useState({
+    menu_id: '',
+    rating: 5,
+    review_text: '',
+    user_id: '' // Changed from default 1 to empty string
+  });
 
   const [reservationForm, setReservationForm] = useState({
     date: '',
@@ -857,6 +865,76 @@ function App() {
     }
   };
 
+  // Add this function before the return statement
+  const filteredReviews = reviews.filter(review => {
+    if (selectedRatingFilter === 'all') return true;
+    return review.rating === parseInt(selectedRatingFilter);
+  });
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Prepare the review data according to the model's parameters
+      const reviewData = {
+        user_id: reviewForm.user_id,
+        menu_id: parseInt(reviewForm.menu_id),
+        rating: parseInt(reviewForm.rating),
+        comment: reviewForm.review_text // Changed from review_text to comment to match model
+      };
+
+      const response = await fetch('http://localhost:5000/api/dish-reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(reviewData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit review');
+      }
+
+      const data = await response.json();
+      
+      // Add the new review to the reviews list
+      const newReview = {
+        review_id: data.review_id,
+        menu_id: reviewData.menu_id,
+        rating: reviewData.rating,
+        review_text: reviewData.comment,
+        user_id: reviewData.user_id,
+        review_date: new Date().toISOString(),
+        dish_name: menuItems.find(item => item.menu_id === reviewData.menu_id)?.name || 'Unknown Dish'
+      };
+
+      setReviews(prevReviews => [newReview, ...prevReviews]);
+      setShowReviewForm(false);
+      setReviewForm({
+        menu_id: '',
+        rating: 5,
+        review_text: '',
+        user_id: '' // Reset to empty string
+      });
+      setSuccess('Review submitted successfully!');
+    } catch (err) {
+      setError('Failed to submit review. Please try again.');
+      console.error('Review submission error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReviewInputChange = (e) => {
+    const { name, value } = e.target;
+    setReviewForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   return (
     <div className="App" style={{ minHeight: '100vh', width: '100vw', background: '#f7f7f9', overflowX: 'hidden' }}>
       <header className="navbar" style={{
@@ -1412,22 +1490,49 @@ function App() {
             <div className="reviews-filter">
               <h3>Filter Reviews</h3>
               <div className="star-filters">
-                <button className="star-filter active">All</button>
-                <button className="star-filter">5★</button>
-                <button className="star-filter">4★</button>
-                <button className="star-filter">3★</button>
-                <button className="star-filter">2★</button>
-                <button className="star-filter">1★</button>
+                <button 
+                  className={`star-filter ${selectedRatingFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setSelectedRatingFilter('all')}
+                  style={{
+                    background: selectedRatingFilter === 'all' ? '#b22222' : '#eee',
+                    color: selectedRatingFilter === 'all' ? '#fff' : '#333',
+                    padding: '8px 16px',
+                    borderRadius: '4px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    marginRight: '8px'
+                  }}
+                >
+                  All
+                </button>
+                {[5, 4, 3, 2, 1].map(rating => (
+                  <button
+                    key={rating}
+                    className={`star-filter ${selectedRatingFilter === rating.toString() ? 'active' : ''}`}
+                    onClick={() => setSelectedRatingFilter(rating.toString())}
+                    style={{
+                      background: selectedRatingFilter === rating.toString() ? '#b22222' : '#eee',
+                      color: selectedRatingFilter === rating.toString() ? '#fff' : '#333',
+                      padding: '8px 16px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      marginRight: '8px'
+                    }}
+                  >
+                    {rating}★
+                  </button>
+                ))}
               </div>
             </div>
 
-            {(!Array.isArray(reviews) || reviews.length === 0) ? (
+            {(!Array.isArray(filteredReviews) || filteredReviews.length === 0) ? (
               <div className="loading-indicator">
-                <p>Loading reviews...</p>
+                <p>No reviews found for the selected filter.</p>
               </div>
             ) : (
               <div className="reviews-list">
-                {reviews.map((review) => (
+                {filteredReviews.map((review) => (
                   <div className="review-card" key={review.review_id || review.id}>
                     <div className="review-header">
                       <div className="reviewer-info">
@@ -1459,9 +1564,168 @@ function App() {
               </div>
             )}
 
-            <button className="add-review-button">
+            <button 
+              className="add-review-button"
+              onClick={() => setShowReviewForm(true)}
+              style={{
+                background: '#b22222',
+                color: '#fff',
+                padding: '12px 24px',
+                borderRadius: '4px',
+                border: 'none',
+                fontWeight: 600,
+                cursor: 'pointer',
+                marginTop: '20px'
+              }}
+            >
               WRITE A REVIEW
             </button>
+
+            {/* Review Form Modal */}
+            {showReviewForm && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.5)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 1000
+              }}>
+                <div style={{
+                  background: '#fff',
+                  padding: '2rem',
+                  borderRadius: '8px',
+                  width: '90%',
+                  maxWidth: '500px',
+                  position: 'relative'
+                }}>
+                  <button
+                    onClick={() => setShowReviewForm(false)}
+                    style={{
+                      position: 'absolute',
+                      top: '1rem',
+                      right: '1rem',
+                      background: 'none',
+                      border: 'none',
+                      fontSize: '1.5rem',
+                      cursor: 'pointer',
+                      color: '#666'
+                    }}
+                  >
+                    ×
+                  </button>
+
+                  <h2 style={{ marginBottom: '1.5rem' }}>Write a Review</h2>
+                  
+                  {error && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
+                  
+                  <form onSubmit={handleReviewSubmit}>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem' }}>User ID</label>
+                      <input
+                        type="number"
+                        name="user_id"
+                        value={reviewForm.user_id}
+                        onChange={handleReviewInputChange}
+                        required
+                        min="1"
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem',
+                          borderRadius: '4px',
+                          border: '1px solid #ccc'
+                        }}
+                        placeholder="Enter your user ID"
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem' }}>Select Dish</label>
+                      <select
+                        name="menu_id"
+                        value={reviewForm.menu_id}
+                        onChange={handleReviewInputChange}
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem',
+                          borderRadius: '4px',
+                          border: '1px solid #ccc'
+                        }}
+                      >
+                        <option value="">Select a dish</option>
+                        {menuItems.map(item => (
+                          <option key={item.menu_id} value={item.menu_id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem' }}>Rating</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setReviewForm(prev => ({ ...prev, rating: star }))}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              fontSize: '1.5rem',
+                              cursor: 'pointer',
+                              color: star <= reviewForm.rating ? '#ffd700' : '#ccc'
+                            }}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem' }}>Your Review</label>
+                      <textarea
+                        name="review_text"
+                        value={reviewForm.review_text}
+                        onChange={handleReviewInputChange}
+                        required
+                        rows="4"
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem',
+                          borderRadius: '4px',
+                          border: '1px solid #ccc'
+                        }}
+                        placeholder="Share your experience with this dish..."
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      style={{
+                        background: '#b22222',
+                        color: '#fff',
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '4px',
+                        border: 'none',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        width: '100%'
+                      }}
+                    >
+                      {loading ? 'SUBMITTING...' : 'SUBMIT REVIEW'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
           </section>
         )}
 
