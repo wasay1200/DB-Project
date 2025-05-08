@@ -186,3 +186,13 @@ SELECT * FROM Staff;
 SELECT * FROM Staff_Ratings;
 SELECT * FROM QR_Codes;
 GO
+
+create Procedure delRes @ID int
+AS
+BEGIN 
+delete from Order_Items where order_id in (Select order_id from Orders where reservation_id=@ID)
+delete from Orders where reservation_id=@ID
+delete from QR_Codes where reservation_id=@ID
+delete from Reservations where reservation_id=@ID
+
+END
