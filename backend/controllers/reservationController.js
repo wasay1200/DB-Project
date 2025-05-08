@@ -133,30 +133,36 @@ const ReservationController = {
                     message: 'Please provide date, time, and partySize'
                 });
             }
+            
+            console.log('GetAvailableTables() Params:', { date, time, partySize });
+            
             // Convert '12:12:12' to a Date object with only the time portion
-const timeParts = time.split(':');
-const timeObject = new Date();
-timeObject.setHours(parseInt(timeParts[0]));
-timeObject.setMinutes(parseInt(timeParts[1]));
-timeObject.setSeconds(parseInt(timeParts[2] || 0));
-
-// console.log('>>> GetAvailableTables() Params -->', {
-//     date,
-//     time: timeObject.toTimeString().split(' ')[0],
-//     partySize
-// });
+            const timeParts = time.split(':');
+            const timeObject = new Date();
+            timeObject.setHours(parseInt(timeParts[0]));
+            timeObject.setMinutes(parseInt(timeParts[1]));
+            timeObject.setSeconds(parseInt(timeParts[2] || 0));
+            
+            console.log('Converted time:', timeObject.toTimeString());
+            
             const result = await Reservations.GetAvailableTables(date, timeObject, parseInt(partySize));
-            //console.log('SQL Query Result:', result);
-            if (result.recordset && result.recordset.length === 0) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'No available tables for the specified criteria'
+            console.log('Available tables result:', result);
+            
+            // Check if result is empty
+            if (!result || (result.recordset && result.recordset.length === 0)) {
+                return res.status(200).json({
+                    success: true,
+                    message: 'No available tables for the specified criteria',
+                    data: []
                 });
             }
             
+            // Handle different possible result formats
+            const tablesData = result.recordset || result;
+            
             res.status(200).json({
                 success: true,
-                data: result
+                data: tablesData
             });
         } catch (error) {
             console.error('Error in getAvailableTables controller:', error);
@@ -242,6 +248,76 @@ timeObject.setSeconds(parseInt(timeParts[2] || 0));
             });
         } catch (error) {
             console.error('Error in createReservation controller:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error creating reservation',
+                error: error.message
+            });
+        }
+    },
+
+    // Create user (if needed) and reservation - handles frontend form submission
+    async createUserAndReservation(req, res) {
+        try {
+            console.log('createUserAndReservation called with body:', JSON.stringify(req.body, null, 2));
+            
+            const { name, email, password, table_id, reservation_date, time_slot, special_requests } = req.body;
+            
+            // Validate required fields
+            if (!name || !email || !table_id || !reservation_date || !time_slot) {
+                console.log('Missing required fields:', { name, email, table_id, reservation_date, time_slot });
+                return res.status(400).json({
+                    success: false,
+                    message: 'Please provide name, email, table_id, reservation_date, and time_slot'
+                });
+            }
+            
+            // Convert time string to Date object
+            const timeParts = time_slot.split(':');
+            const timeObject = new Date();
+            timeObject.setHours(parseInt(timeParts[0]));
+            timeObject.setMinutes(parseInt(timeParts[1]));
+            timeObject.setSeconds(parseInt(timeParts[2] || 0));
+            
+            console.log('Looking up user with email:', email);
+            // Check if user exists
+            let user = await Reservations.getUserByEmail(email);
+            console.log('User lookup result:', user);
+            let user_id;
+            
+            if (user && user.length > 0) {
+                // User exists
+                user_id = user[0].user_id;
+                console.log('Existing user found, user_id:', user_id);
+            } else {
+                // Create new user
+                console.log('Creating new user with:', { name, email });
+                const defaultPassword = password || 'default_password';
+                await Reservations.CreateUser(name, email, defaultPassword, 'customer');
+                
+                // Get the newly created user
+                console.log('Fetching newly created user');
+                user = await Reservations.getUserByEmail(email);
+                if (!user || user.length === 0) {
+                    console.error('Failed to retrieve newly created user');
+                    throw new Error('Failed to create user');
+                }
+                user_id = user[0].user_id;
+                console.log('New user created with user_id:', user_id);
+            }
+            
+            // Create reservation
+            console.log('Creating reservation with:', { user_id, table_id, reservation_date, time: timeObject.toTimeString() });
+            const result = await Reservations.CreateReservation(user_id, table_id, reservation_date, timeObject);
+            console.log('Reservation created successfully:', result);
+            
+            res.status(201).json({
+                success: true,
+                message: 'Reservation created successfully',
+                data: result
+            });
+        } catch (error) {
+            console.error('Error in createUserAndReservation controller:', error);
             res.status(500).json({
                 success: false,
                 message: 'Error creating reservation',

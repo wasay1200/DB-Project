@@ -40,15 +40,26 @@ const Reservations = {
 
     async CreateUser(name, email, password, role) {
         try {
+            console.log('Creating user in database:', { name, email, role });
             const pool = await poolPromise;
-            const result = await pool.request().input('name', sql.NVarChar, name).input('email',
-                sql.NVarChar, email).input('password', sql.NVarChar, password).input('role', sql.NVarChar,
-                    role).query(`INSERT INTO Users (name, email, password, role) VALUES (@name, @email, @password, @role);
-                        `);
+            const result = await pool.request()
+                .input('name', sql.NVarChar, name)
+                .input('email', sql.NVarChar, email)
+                .input('password', sql.NVarChar, password)
+                .input('role', sql.NVarChar, role)
+                .query(`INSERT INTO Users (name, email, password, role) VALUES (@name, @email, @password, @role);`);
+            
+            console.log('User creation result:', result);
             return result;
         } catch (err) {
-            console.error('SQL error', err);
-            return err;
+            console.error('SQL error in CreateUser:', err);
+            // If this is a duplicate key error (user already exists)
+            if (err.number === 2627 || err.number === 2601) {
+                console.log('User already exists with email:', email);
+                // Return the existing user instead of throwing an error
+                return this.getUserByEmail(email);
+            }
+            throw err;
         }
     },
 
@@ -65,9 +76,27 @@ const Reservations = {
 
     async GetAvailableTables(date, time, partySize) {
         try { 
+            console.log('GetAvailableTables model params:', { 
+                date: date, 
+                time: time.toTimeString().split(' ')[0],
+                partySize: partySize 
+            });
+            
+            // Format date for SQL Server if needed
+            let sqlDate = date;
+            if (typeof date === 'string') {
+                // Convert from YYYY-MM-DD to SQL Server date
+                const dateParts = date.split('-');
+                if (dateParts.length === 3) {
+                    sqlDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+                    console.log('Converted date string to Date object:', sqlDate);
+                }
+            }
+            
             const pool = await poolPromise;
-            const result = await pool.request().input('date', sql.NVarChar, date)
-            .input('time', sql.Time, time)
+            const result = await pool.request()
+                .input('date', sql.Date, sqlDate)
+                .input('time', sql.Time, time)
                 .input('partySize', sql.Int, partySize)
                 .query(`SELECT 
                     t.*,
@@ -85,10 +114,11 @@ const Reservations = {
                 )
                 ORDER BY ABS(t.capacity - @partySize) ASC`);
 
+            console.log('SQL query result rows:', result.recordset ? result.recordset.length : 0);
             return result.recordset;
         } catch (err) {
-            console.error('SQL error', err);
-            return err;
+            console.error('SQL error in GetAvailableTables:', err);
+            throw err;
         }
     },
 
@@ -131,11 +161,29 @@ const Reservations = {
 
     async CreateReservation(user_id, table_id, reservation_date, time_slot) {
         try {
+            console.log('CreateReservation model params:', { 
+                user_id, 
+                table_id, 
+                reservation_date, 
+                time_slot: time_slot.toTimeString ? time_slot.toTimeString().split(' ')[0] : time_slot 
+            });
+            
+            // Format date for SQL Server if needed
+            let sqlDate = reservation_date;
+            if (typeof reservation_date === 'string') {
+                // Convert from YYYY-MM-DD to SQL Server date
+                const dateParts = reservation_date.split('-');
+                if (dateParts.length === 3) {
+                    sqlDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+                    console.log('Converted date string to Date object:', sqlDate);
+                }
+            }
+            
             const pool = await poolPromise;
             const result = await pool.request()
                 .input('user_id', sql.Int, user_id)
                 .input('table_id', sql.Int, table_id)
-                .input('reservation_date', sql.Date, reservation_date)
+                .input('reservation_date', sql.Date, sqlDate)
                 .input('time_slot', sql.Time, time_slot)
                 .query(`
                     INSERT INTO Reservations (user_id, table_id, reservation_date, time_slot, status)
@@ -145,6 +193,7 @@ const Reservations = {
                 `);
     
             const reservation_id = result.recordset[0].reservation_id;
+            console.log('Created reservation with ID:', reservation_id);
     
             return {
                 reservation_id,
@@ -155,7 +204,7 @@ const Reservations = {
                 status: 'confirmed'
             };
         } catch (err) {
-            console.error('SQL error', err);
+            console.error('SQL error in CreateReservation:', err);
             throw err;
         }
     },    

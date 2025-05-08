@@ -56,6 +56,13 @@ CREATE TABLE Order_Items (
     FOREIGN KEY (menu_id) REFERENCES Menu(menu_id)
 );
 
+CREATE TABLE Menu_Stock (
+    menu_id INT PRIMARY KEY,
+    quantity_in_stock INT NOT NULL,
+    FOREIGN KEY (menu_id) REFERENCES Menu(menu_id)
+);
+
+
 CREATE TABLE Dish_Reviews (
     review_id INT IDENTITY(1,1) PRIMARY KEY,
     user_id INT NOT NULL,
@@ -133,6 +140,14 @@ INSERT INTO Order_Items (order_id, menu_id, quantity) VALUES
 (3, 3, 1);
 GO
 
+INSERT INTO Menu_Stock (menu_id, quantity_in_stock) VALUES
+(1, 42),   
+(2, 77),   
+(3, 58),
+(4, 50),
+(5, 60);
+
+GO
 -- Insert Data into Dish_Reviews
 INSERT INTO Dish_Reviews (user_id, menu_id, rating, review_text) VALUES
 (1, 1, 5, 'Delicious pizza!'),

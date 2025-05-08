@@ -17,7 +17,7 @@ router.get('/check-availability', ReservationController.checkTableAvailability);
 
 // Reservation management routes 
 router.get('/by-email/:email', ReservationController.getReservationsByEmail);
-router.post('/', ReservationController.createReservation);
+router.post('/', ReservationController.createUserAndReservation);
 router.put('/:reservation_id/status', ReservationController.updateReservationStatus);
 
 module.exports = router;
