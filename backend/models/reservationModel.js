@@ -221,6 +221,19 @@ const Reservations = {
             console.error('SQL error', err);
             return err;
         }  
+    },
+
+    async  DeleteReservationByID(reservation_id )
+    {
+        try {
+            const pool = await poolPromise;
+            const result = await pool.request().input('reservation_id', sql.Int, parseInt(reservation_id))
+            .query(` exec delRes @reservation_id`);
+            return result.recordset;
+        } catch (err) {
+            console.error('SQL error', err);
+            return err;
+        }  
     }
 
 };

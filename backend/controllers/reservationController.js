@@ -363,6 +363,23 @@ timeObject.setSeconds(parseInt(timeParts[2] || 0));
                 error: error.message
             });
         }
+    },
+    async DeleteReservationByID(req, res) {
+        try {
+            const { reservation_id } = req.params;
+            const resDel = await Reservations.DeleteReservationByID(reservation_id);
+            res.status(200).json({
+                success: true,
+                data: resDel
+            });
+        } catch (error) {
+            console.error('Error in DeleteReservationByID controller:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error deleting Reservation by ID',
+                error: error.message
+            });
+        }
     }
 };
 

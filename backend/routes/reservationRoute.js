@@ -20,4 +20,5 @@ router.get('/by-email/:email', ReservationController.getReservationsByEmail);
 router.post('/', ReservationController.createUserAndReservation);
 router.put('/:reservation_id/status', ReservationController.updateReservationStatus);
 
+router.delete('/:reservation_id',ReservationController.DeleteReservationByID);
 module.exports = router;
