@@ -111,10 +111,10 @@ function App() {
   // Category mapping (adjust as needed)
   const categoryMap = {
     'All': () => true,
-    'Appetizers': item => item.category === 'Appetizers' || (item.name && (item.name.includes('Salad') || item.name.includes('Bread'))),
-    'Main Course': item => item.category === 'Main Course' || (item.name && (item.name.includes('Pasta') || item.name.includes('Pizza') || item.name.includes('Spaghetti'))),
-    'Desserts': item => item.category === 'Desserts',
-    'Beverages': item => item.category === 'Beverages',
+    'Appetizers': item => item.category === 'appetizer' ,
+    'Main Course': item => item.category === 'main course' ,
+    'Desserts': item => item.category === 'dessert',
+    'Beverages': item => item.category === 'beverage',
   };
 
   // Filtered and searched menu items
@@ -478,6 +478,11 @@ function App() {
       'Spaghetti Bolognese': '/spicy-spaghetti-arrabbiata.webp',
       'Pasta Alfredo': '/alfredo-sauce-pasta.webp',
       'Caesar Salad': '/classic-caesar-salad.webp',
+      'Tiramisu': '/Tiramisu-Cake.jpg',
+      'Chocolate Cake': '/chocolatecake.webp',
+      'Ice Cream Sundae': '/Sundae.jpg',
+      'Coffee': '/coffee.jpg',
+      'Soft Drink': '/softdrink.webp',
       // Add more mappings as needed
     };
     // Try to match by name, fallback to a default image
