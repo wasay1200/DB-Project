@@ -147,6 +147,15 @@ INSERT INTO Menu_Stock (menu_id, quantity_in_stock) VALUES
 (4, 50),
 (5, 60);
 
+--New Menu Items
+INSERT INTO Menu_Stock (menu_id, quantity_in_stock) VALUES
+(6, 30),    -- Tiramisu
+(7, 25),    -- Chocolate Cake
+(8, 35),    -- Ice Cream Sundae
+(9, 100),   -- Coffee
+(10, 120);  -- Soft Drink
+
+
 GO
 -- Insert Data into Dish_Reviews
 INSERT INTO Dish_Reviews (user_id, menu_id, rating, review_text) VALUES
