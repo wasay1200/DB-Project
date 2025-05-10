@@ -196,3 +196,10 @@ delete from QR_Codes where reservation_id=@ID
 delete from Reservations where reservation_id=@ID
 
 END
+
+INSERT INTO Menu (name, price, category) VALUES
+('Tiramisu', 6.99, 'dessert'),
+('Chocolate Cake', 5.99, 'dessert'),
+('Ice Cream Sundae', 7.99, 'dessert'),
+('Coffee', 2.49, 'beverage'),
+('Soft Drink', 1.99, 'beverage');
