@@ -1,4 +1,5 @@
 const Reservations = require('../models/reservationModel');
+const { sendReservationConfirmation } = require('../utils/emailService');
 
 const ReservationController = {
     // Get all reservations
@@ -310,6 +311,27 @@ timeObject.setSeconds(parseInt(timeParts[2] || 0));
             console.log('Creating reservation with:', { user_id, table_id, reservation_date, time: timeObject.toTimeString() });
             const result = await Reservations.CreateReservation(user_id, table_id, reservation_date, timeObject);
             console.log('Reservation created successfully:', result);
+
+            // Get table capacity for the email
+            const tableInfo = await Reservations.getTableInfo(table_id);
+            const table_capacity = tableInfo ? tableInfo.capacity : 'N/A';
+            
+            // Send confirmation email
+            try {
+                await sendReservationConfirmation({
+                    name,
+                    email,
+                    reservation_date,
+                    time_slot: timeObject.toTimeString().split(' ')[0],
+                    table_id,
+                    table_capacity,
+                    reservation_id: result.reservation_id
+                });
+                console.log('Confirmation email sent successfully');
+            } catch (emailError) {
+                console.error('Failed to send confirmation email:', emailError);
+                // Don't fail the reservation if email fails
+            }
             
             res.status(201).json({
                 success: true,

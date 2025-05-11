@@ -234,7 +234,20 @@ const Reservations = {
             console.error('SQL error', err);
             return err;
         }  
-    }
+    },
+
+    async getTableInfo(table_id) {
+        try {
+            const pool = await poolPromise;
+            const result = await pool.request()
+                .input('table_id', sql.Int, table_id)
+                .query('SELECT * FROM Tables WHERE table_id = @table_id');
+            return result.recordset[0];
+        } catch (err) {
+            console.error('SQL error in getTableInfo:', err);
+            return null;
+        }
+    },
 
 };
 
