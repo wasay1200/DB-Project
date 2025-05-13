@@ -1,5 +1,6 @@
 const Reservations = require('../models/reservationModel');
 const { sendReservationConfirmation } = require('../utils/emailService');
+const { poolPromise } = require('../config/db');
 
 const ReservationController = {
     // Get all reservations
@@ -137,33 +138,34 @@ const ReservationController = {
             
             console.log('GetAvailableTables() Params:', { date, time, partySize });
             
-            // Convert '12:12:12' to a Date object with only the time portion
+            // Convert time string to a proper time object
             const timeParts = time.split(':');
             const timeObject = new Date();
-            timeObject.setHours(parseInt(timeParts[0]));
-            timeObject.setMinutes(parseInt(timeParts[1]));
-            timeObject.setSeconds(parseInt(timeParts[2] || 0));
+            timeObject.setHours(parseInt(timeParts[0], 10));
+            timeObject.setMinutes(parseInt(timeParts[1], 10));
+            timeObject.setSeconds(parseInt(timeParts[2] || '0', 10));
             
-            console.log('Converted time:', timeObject.toTimeString());
+            console.log('Converted time object:', {
+                original: time,
+                hours: timeObject.getHours(),
+                minutes: timeObject.getMinutes(),
+                seconds: timeObject.getSeconds(),
+                timeString: timeObject.toTimeString()
+            });
             
-            const result = await Reservations.GetAvailableTables(date, timeObject, parseInt(partySize));
-            console.log('Available tables result:', result);
-            
-            // Check if result is empty
-            if (!result || (result.recordset && result.recordset.length === 0)) {
-                return res.status(200).json({
-                    success: true,
-                    message: 'No available tables for the specified criteria',
-                    data: []
-                });
-            }
-            
-            // Handle different possible result formats
-            const tablesData = result.recordset || result;
+            const result = await Reservations.GetAvailableTables(date, timeObject, parseInt(partySize, 10));
+            console.log('Available tables result:', {
+                available: result.available,
+                message: result.message,
+                tableCount: result.tables ? result.tables.length : 0,
+                tables: result.tables
+            });
             
             res.status(200).json({
                 success: true,
-                data: tablesData
+                available: result.available,
+                message: result.message,
+                data: result.tables
             });
         } catch (error) {
             console.error('Error in getAvailableTables controller:', error);
@@ -228,11 +230,7 @@ const ReservationController = {
     async createReservation(req, res) {
         try {
             const { user_id, table_id, reservation_date, time_slot } = req.body;
-            const timeParts = time_slot.split(':');
-const timeObject = new Date();
-timeObject.setHours(parseInt(timeParts[0]));
-timeObject.setMinutes(parseInt(timeParts[1]));
-timeObject.setSeconds(parseInt(timeParts[2] || 0));
+            
             // Validate required fields
             if (!user_id || !table_id || !reservation_date || !time_slot) {
                 return res.status(400).json({
@@ -240,8 +238,21 @@ timeObject.setSeconds(parseInt(timeParts[2] || 0));
                     message: 'Please provide user_id, table_id, reservation_date, and time_slot'
                 });
             }
+
+            // Convert time string to UTC time
+            const [hours, minutes, seconds] = time_slot.split(':').map(Number);
+            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${(seconds || 0).toString().padStart(2, '0')}`;
             
-            const result = await Reservations.CreateReservation(user_id, table_id, reservation_date, timeObject);
+            // Check table availability before proceeding
+            const availabilityResult = await Reservations.CheckTableAvailability(table_id, reservation_date, timeString);
+            if (availabilityResult[0].reservation_count > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'This table is already reserved for the selected date and time. Please choose a different table or time slot.'
+                });
+            }
+            
+            const result = await Reservations.CreateReservation(user_id, table_id, reservation_date, timeString);
             res.status(201).json({
                 success: true,
                 message: 'Reservation created successfully',
@@ -273,71 +284,100 @@ timeObject.setSeconds(parseInt(timeParts[2] || 0));
                 });
             }
             
-            // Convert time string to Date object
-            const timeParts = time_slot.split(':');
-            const timeObject = new Date();
-            timeObject.setHours(parseInt(timeParts[0]));
-            timeObject.setMinutes(parseInt(timeParts[1]));
-            timeObject.setSeconds(parseInt(timeParts[2] || 0));
+            // Convert time string to UTC time
+            const [hours, minutes, seconds] = time_slot.split(':').map(Number);
+            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${(seconds || 0).toString().padStart(2, '0')}`;
+            console.log('Converted time string:', timeString);
             
-            console.log('Looking up user with email:', email);
-            // Check if user exists
-            let user = await Reservations.getUserByEmail(email);
-            console.log('User lookup result:', user);
-            let user_id;
-            
-            if (user && user.length > 0) {
-                // User exists
-                user_id = user[0].user_id;
-                console.log('Existing user found, user_id:', user_id);
-            } else {
-                // Create new user
-                console.log('Creating new user with:', { name, email });
-                const defaultPassword = password || 'default_password';
-                await Reservations.CreateUser(name, email, defaultPassword, 'customer');
-                
-                // Get the newly created user
-                console.log('Fetching newly created user');
-                user = await Reservations.getUserByEmail(email);
-                if (!user || user.length === 0) {
-                    console.error('Failed to retrieve newly created user');
-                    throw new Error('Failed to create user');
-                }
-                user_id = user[0].user_id;
-                console.log('New user created with user_id:', user_id);
-            }
-            
-            // Create reservation
-            console.log('Creating reservation with:', { user_id, table_id, reservation_date, time: timeObject.toTimeString() });
-            const result = await Reservations.CreateReservation(user_id, table_id, reservation_date, timeObject);
-            console.log('Reservation created successfully:', result);
-
-            // Get table capacity for the email
-            const tableInfo = await Reservations.getTableInfo(table_id);
-            const table_capacity = tableInfo ? tableInfo.capacity : 'N/A';
-            
-            // Send confirmation email
-            try {
-                await sendReservationConfirmation({
-                    name,
-                    email,
-                    reservation_date,
-                    time_slot: timeObject.toTimeString().split(' ')[0],
-                    table_id,
-                    table_capacity,
-                    reservation_id: result.reservation_id
+            // Check table availability before proceeding
+            const availabilityResult = await Reservations.CheckTableAvailability(table_id, reservation_date, timeString);
+            if (availabilityResult[0].reservation_count > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'This table is already reserved for the selected date and time. Please choose a different table or time slot.'
                 });
-                console.log('Confirmation email sent successfully');
-            } catch (emailError) {
-                console.error('Failed to send confirmation email:', emailError);
-                // Don't fail the reservation if email fails
             }
-            
-            res.status(201).json({
-                success: true,
-                message: 'Reservation created successfully',
-                data: result
-            });
+
+            // Start a transaction to ensure atomicity
+            const pool = await poolPromise;
+            const transaction = pool.transaction();
+            await transaction.begin();
+
+            try {
+                console.log('Looking up user with email:', email);
+                // Check if user exists
+                let user = await Reservations.getUserByEmail(email);
+                console.log('User lookup result:', user);
+                let user_id;
+                
+                if (user && user.length > 0) {
+                    // User exists
+                    user_id = user[0].user_id;
+                    console.log('Existing user found, user_id:', user_id);
+                } else {
+                    // Create new user
+                    console.log('Creating new user with:', { name, email });
+                    const defaultPassword = password || 'default_password';
+                    await Reservations.CreateUser(name, email, defaultPassword, 'customer');
+                    
+                    // Get the newly created user
+                    console.log('Fetching newly created user');
+                    user = await Reservations.getUserByEmail(email);
+                    if (!user || user.length === 0) {
+                        throw new Error('Failed to create user');
+                    }
+                    user_id = user[0].user_id;
+                    console.log('New user created with user_id:', user_id);
+                }
+                
+                // Double-check table availability after user creation
+                const recheckAvailability = await Reservations.CheckTableAvailability(table_id, reservation_date, timeString);
+                if (recheckAvailability[0].reservation_count > 0) {
+                    await transaction.rollback();
+                    return res.status(400).json({
+                        success: false,
+                        message: 'This table was just reserved by another user. Please choose a different table or time slot.'
+                    });
+                }
+                
+                // Create reservation
+                console.log('Creating reservation with:', { user_id, table_id, reservation_date, time: timeString });
+                const result = await Reservations.CreateReservation(user_id, table_id, reservation_date, timeString);
+                console.log('Reservation created successfully:', result);
+
+                // Get table capacity for the email
+                const tableInfo = await Reservations.getTableInfo(table_id);
+                const table_capacity = tableInfo ? tableInfo.capacity : 'N/A';
+                
+                // Commit the transaction
+                await transaction.commit();
+                
+                // Send confirmation email
+                try {
+                    await sendReservationConfirmation({
+                        name,
+                        email,
+                        reservation_date,
+                        time_slot: timeString,
+                        table_id,
+                        table_capacity,
+                        reservation_id: result.reservation_id
+                    });
+                    console.log('Confirmation email sent successfully');
+                } catch (emailError) {
+                    console.error('Failed to send confirmation email:', emailError);
+                    // Don't fail the reservation if email fails
+                }
+                
+                res.status(201).json({
+                    success: true,
+                    message: 'Reservation created successfully',
+                    data: result
+                });
+            } catch (error) {
+                await transaction.rollback();
+                throw error;
+            }
         } catch (error) {
             console.error('Error in createUserAndReservation controller:', error);
             res.status(500).json({

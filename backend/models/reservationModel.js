@@ -5,10 +5,18 @@ const Reservations = {
     async getAllReservations() {
         try {
             const pool = await poolPromise;
-            const result = await pool.request().query(`SELECT r.*, u.name AS customer_name, u.email 
-                                                        FROM Reservations r
-                                                        JOIN Users u ON r.user_id = u.user_id
-                                                        ORDER BY r.reservation_date DESC, r.time_slot DESC`);
+            const result = await pool.request().query(`SELECT 
+                r.reservation_id,
+                r.user_id,
+                r.table_id,
+                CONVERT(varchar, r.reservation_date, 23) as reservation_date,
+                CONVERT(varchar, r.time_slot, 108) as time_slot,
+                r.status,
+                u.name AS customer_name,
+                u.email 
+                FROM Reservations r
+                JOIN Users u ON r.user_id = u.user_id
+                ORDER BY r.reservation_date DESC, r.time_slot DESC`);
             return result.recordset;
         } catch (err) {
             console.error('SQL error', err);
@@ -85,37 +93,71 @@ const Reservations = {
             // Format date for SQL Server if needed
             let sqlDate = date;
             if (typeof date === 'string') {
-                // Convert from YYYY-MM-DD to SQL Server date
-                const dateParts = date.split('-');
-                if (dateParts.length === 3) {
-                    sqlDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
-                    console.log('Converted date string to Date object:', sqlDate);
-                }
+                // Convert from YYYY-MM-DD to UTC date
+                const [year, month, day] = date.split('-').map(Number);
+                // Create date in UTC to prevent timezone shifts
+                sqlDate = new Date(Date.UTC(year, month - 1, day));
+                console.log('Converted date string to UTC Date object:', sqlDate);
             }
             
             const pool = await poolPromise;
-            const result = await pool.request()
-                .input('date', sql.Date, sqlDate)
-                .input('time', sql.Time, time)
-                .input('partySize', sql.Int, partySize)
-                .query(`SELECT 
+            const timeString = time.toTimeString().split(' ')[0];
+            console.log('Using time string for SQL:', timeString);
+
+            const query = `
+                SELECT 
                     t.*,
                     CASE 
                         WHEN t.capacity = @partySize THEN 'Perfect Fit'
                         ELSE CONCAT('Seats ', t.capacity)
-                    END AS capacity_display
+                    END AS capacity_display,
+                    CASE 
+                        WHEN EXISTS (
+                            SELECT 1 
+                            FROM Reservations r 
+                            WHERE r.table_id = t.table_id 
+                            AND r.reservation_date = @date 
+                            AND r.time_slot = @time 
+                            AND r.status != 'cancelled'
+                        ) THEN 0
+                        ELSE 1
+                    END as is_available
                 FROM Tables t
                 WHERE t.capacity >= @partySize
-                AND t.table_id NOT IN (
-                    SELECT r.table_id FROM Reservations r
-                    WHERE r.reservation_date = @date
-                    AND r.time_slot = @time
-                    AND r.status != 'cancelled'
-                )
-                ORDER BY ABS(t.capacity - @partySize) ASC`);
+                ORDER BY 
+                    is_available DESC,
+                    ABS(t.capacity - @partySize) ASC
+            `;
 
-            console.log('SQL query result rows:', result.recordset ? result.recordset.length : 0);
-            return result.recordset;
+            console.log('Executing SQL query with params:', {
+                date: sqlDate,
+                time: timeString,
+                partySize: partySize
+            });
+
+            const result = await pool.request()
+                .input('date', sql.Date, sqlDate)
+                .input('time', sql.Time, timeString)
+                .input('partySize', sql.Int, partySize)
+                .query(query);
+
+            console.log('SQL query result:', {
+                rowCount: result.recordset.length,
+                firstRow: result.recordset[0],
+                allRows: result.recordset
+            });
+            
+            // Check if any tables are available
+            const availableTables = result.recordset.filter(table => table.is_available === 1);
+            console.log('Available tables count:', availableTables.length);
+
+            return {
+                available: availableTables.length > 0,
+                message: availableTables.length > 0 
+                    ? `Found ${availableTables.length} available table(s) for your party size`
+                    : 'No tables are available for the selected date and time. Please choose a different time slot.',
+                tables: result.recordset
+            };
         } catch (err) {
             console.error('SQL error in GetAvailableTables:', err);
             throw err;
@@ -146,12 +188,22 @@ const Reservations = {
     async GetReservationsByEmail(email) {
         try {
             const pool = await poolPromise;
-            const result = await pool.request().input('email', sql.NVarChar, email).query(`SELECT r.*, t.capacity AS table_capacity 
-                                                                                            FROM Reservations r
-                                                                                            JOIN Users u ON r.user_id = u.user_id
-                                                                                            JOIN Tables t ON r.table_id = t.table_id
-                                                                                            WHERE u.email = @email
-                                                                                            ORDER BY r.reservation_date DESC, r.time_slot DESC`);
+            const result = await pool.request()
+                .input('email', sql.NVarChar, email)
+                .query(`
+                    SELECT 
+                        r.reservation_id,
+                        r.user_id,
+                        r.table_id,
+                        CONVERT(varchar, r.reservation_date, 23) as reservation_date,
+                        CONVERT(varchar, r.time_slot, 108) as time_slot,
+                        r.status,
+                        t.capacity AS table_capacity 
+                    FROM Reservations r
+                    JOIN Users u ON r.user_id = u.user_id
+                    JOIN Tables t ON r.table_id = t.table_id
+                    WHERE u.email = @email
+                    ORDER BY r.reservation_date DESC, r.time_slot DESC`);
             return result.recordset;
         } catch (err) {
             console.error('SQL error', err);
@@ -165,21 +217,40 @@ const Reservations = {
                 user_id, 
                 table_id, 
                 reservation_date, 
-                time_slot: time_slot.toTimeString ? time_slot.toTimeString().split(' ')[0] : time_slot 
+                time_slot
             });
             
             // Format date for SQL Server if needed
             let sqlDate = reservation_date;
             if (typeof reservation_date === 'string') {
-                // Convert from YYYY-MM-DD to SQL Server date
-                const dateParts = reservation_date.split('-');
-                if (dateParts.length === 3) {
-                    sqlDate = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
-                    console.log('Converted date string to Date object:', sqlDate);
-                }
+                // Convert from YYYY-MM-DD to UTC date
+                const [year, month, day] = reservation_date.split('-').map(Number);
+                // Create date in UTC to prevent timezone shifts
+                sqlDate = new Date(Date.UTC(year, month - 1, day));
+                console.log('Converted date string to UTC Date object:', sqlDate);
+            }
+
+            const pool = await poolPromise;
+            
+            // First check if a reservation already exists for this table, date, and time
+            const checkResult = await pool.request()
+                .input('table_id', sql.Int, table_id)
+                .input('reservation_date', sql.Date, sqlDate)
+                .input('time_slot', sql.Time, time_slot)
+                .query(`
+                    SELECT COUNT(*) as count 
+                    FROM Reservations 
+                    WHERE table_id = @table_id 
+                    AND reservation_date = @reservation_date 
+                    AND time_slot = @time_slot 
+                    AND status != 'cancelled'
+                `);
+
+            if (checkResult.recordset[0].count > 0) {
+                throw new Error('A reservation already exists for this table at the selected date and time');
             }
             
-            const pool = await poolPromise;
+            // If no existing reservation, proceed with creation
             const result = await pool.request()
                 .input('user_id', sql.Int, user_id)
                 .input('table_id', sql.Int, table_id)

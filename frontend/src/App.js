@@ -209,6 +209,9 @@ function App() {
   const checkAvailableTables = (date, time, partySize) => {
     setLoading(true);
     setError(null);
+    setSuccess(null);
+
+    console.log('Checking available tables with:', { date, time, partySize });
 
     fetch(`http://localhost:5000/api/reservations/available-tables?date=${date}&time=${time}&partySize=${partySize}`)
       .then(response => {
@@ -219,9 +222,25 @@ function App() {
       })
       .then(data => {
         console.log("Available tables response:", data);
-        // Handle both response formats: data directly or data in data.data
-        const tablesData = data.data || data;
-        setAvailableTables(Array.isArray(tablesData) ? tablesData : []);
+        // Use data.data instead of data.tables
+        const tables = data.data || [];
+        console.log("Tables from response:", tables);
+        
+        // Set the tables
+        setAvailableTables(tables);
+        
+        // Set appropriate message
+        if (tables.length > 0) {
+          const availableCount = tables.filter(table => table.is_available === 1).length;
+          console.log("Available tables count:", availableCount);
+          if (availableCount === 0) {
+            setError('No tables are available for this date and time. Please choose a different time slot.');
+          } else {
+            setSuccess(`Found ${availableCount} available table(s) for your party size`);
+          }
+        } else {
+          setError('No tables found matching your party size requirements.');
+        }
         setLoading(false);
       })
       .catch(err => {
@@ -440,7 +459,10 @@ function App() {
     if (!dateString) return 'N/A';
 
     try {
-      const date = new Date(dateString);
+      // Parse the date string directly (format: YYYY-MM-DD)
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      
       return date.toLocaleDateString('en-US', {
         weekday: 'short',
         month: 'short',
@@ -448,6 +470,7 @@ function App() {
         year: 'numeric'
       });
     } catch (err) {
+      console.error('Error formatting date:', err);
       return dateString;
     }
   };
@@ -455,18 +478,19 @@ function App() {
   const formatTime = (timeString) => {
     if (!timeString) return 'N/A';
 
-    // Handle SQL TIME format (hh:mm:ss)
-    if (timeString.includes(':')) {
-      const timeParts = timeString.split(':');
-      const hours = parseInt(timeParts[0]);
-      const minutes = timeParts[1];
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      const formattedHours = hours % 12 || 12;
+    try {
+      // Handle SQL TIME format (HH:mm:ss)
+      const [hours, minutes] = timeString.split(':').map(Number);
+      const hour = hours % 24; // Ensure hours are in 24-hour format
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const hour12 = hour % 12 || 12;
+      const paddedMinutes = minutes.toString().padStart(2, '0');
 
-      return `${formattedHours}:${minutes} ${ampm}`;
+      return `${hour12}:${paddedMinutes} ${ampm}`;
+    } catch (err) {
+      console.error('Error formatting time:', err);
+      return timeString;
     }
-
-    return timeString;
   };
 
   // Helper function to map menu item names to image filenames
@@ -1346,16 +1370,9 @@ function App() {
                   </div>
                 </div>
 
-                {availableTables.length > 0 ? (
-                  <div className="available-tables" style={{
-                    marginTop: '20px',
-                    padding: '15px',
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: '8px',
-                    border: '1px solid #ddd'
-                  }}>
-                    <h4 style={{ color: '#900', marginBottom: '10px' }}>Available Tables</h4>
-                    <p>Please select a table for your reservation:</p>
+                {availableTables && availableTables.length > 0 ? (
+                  <div className="available-tables" style={{ marginTop: '20px' }}>
+                    <h3>Tables</h3>
                     <div className="table-options" style={{
                       display: 'flex',
                       flexWrap: 'wrap',
@@ -1365,30 +1382,58 @@ function App() {
                       {availableTables.map(table => (
                         <div
                           key={table.table_id}
-                          className={`table-option ${reservationForm.tableId === table.table_id ? 'selected' : ''}`}
-                          onClick={() => handleTableSelect(table.table_id)}
+                          className={`table-option ${reservationForm.tableId === table.table_id ? 'selected' : ''} ${!table.is_available ? 'unavailable' : ''}`}
+                          onClick={() => table.is_available === 1 && handleTableSelect(table.table_id)}
                           style={{
                             padding: '15px',
                             borderRadius: '8px',
                             border: reservationForm.tableId === table.table_id
                               ? '2px solid #900'
-                              : '1px solid #ddd',
+                              : table.is_available === 1
+                                ? '1px solid #ddd'
+                                : '1px solid #ffcccc',
                             backgroundColor: reservationForm.tableId === table.table_id
                               ? '#fff5f5'
-                              : '#fff',
-                            cursor: 'pointer',
+                              : table.is_available === 1
+                                ? '#fff'
+                                : '#fff5f5',
+                            cursor: table.is_available === 1 ? 'pointer' : 'not-allowed',
                             minWidth: '150px',
                             boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
                             display: 'flex',
                             flexDirection: 'column',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            position: 'relative',
+                            opacity: table.is_available === 1 ? 1 : 0.7
                           }}
                         >
-                          <div className="table-number" style={{ fontWeight: 'bold', fontSize: '16px' }}>
+                          {table.is_available === 0 && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '50%',
+                              left: '50%',
+                              transform: 'translate(-50%, -50%) rotate(-45deg)',
+                              fontSize: '24px',
+                              color: '#ff0000',
+                              fontWeight: 'bold',
+                              textShadow: '0 0 3px rgba(255,255,255,0.8)',
+                              zIndex: 1
+                            }}>
+                              ✕
+                            </div>
+                          )}
+                          <div className="table-number" style={{ 
+                            fontWeight: 'bold', 
+                            fontSize: '16px',
+                            color: table.is_available === 1 ? '#000' : '#999'
+                          }}>
                             Table {table.table_id}
                           </div>
-                          <div className="table-capacity" style={{ color: '#666', marginTop: '5px' }}>
-                            Seats {table.capacity}
+                          <div className="table-capacity" style={{ 
+                            color: table.is_available === 1 ? '#666' : '#999',
+                            marginTop: '5px'
+                          }}>
+                            {table.capacity_display}
                           </div>
                           {reservationForm.tableId === table.table_id && (
                             <div className="table-selected" style={{
@@ -1396,6 +1441,16 @@ function App() {
                               marginTop: '8px',
                               fontWeight: 'bold'
                             }}>✓ Selected</div>
+                          )}
+                          {table.is_available === 0 && (
+                            <div style={{
+                              color: '#ff0000',
+                              marginTop: '8px',
+                              fontSize: '12px',
+                              textAlign: 'center'
+                            }}>
+                              Already Booked
+                            </div>
                           )}
                         </div>
                       ))}
@@ -1411,7 +1466,7 @@ function App() {
                       border: '1px solid #ffcccc',
                       color: '#d00'
                     }}>
-                      No tables available for this date, time, and party size. Please try a different combination.
+                      {error || 'No tables available for this date, time, and party size. Please try a different combination.'}
                     </div>
                   ) : null
                 )}
@@ -1785,6 +1840,149 @@ function App() {
                 {adminPanelMessage && <div className="success-message" style={{ color: 'green', marginBottom: '10px', border: '1px solid green', padding: '10px', borderRadius: '4px' }}>{adminPanelMessage}</div>}
                 {loading && <p>Loading data...</p>}
 
+                {/* Reservation Analysis Report Section */}
+                <div className="admin-section" style={{ marginBottom: '30px', padding: '20px', border: '1px solid #eee', borderRadius: '8px', background: '#fff' }}>
+                  <h3 style={{ marginBottom: '20px', color: '#333' }}>Reservation Analysis Report</h3>
+                  
+                  {(!Array.isArray(allReservationsForAdmin) || allReservationsForAdmin.length === 0) ? (
+                    <p>No reservation data available for analysis.</p>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                      {/* Peak Hours Analysis */}
+                      <div style={{ padding: '15px', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+                        <h4 style={{ marginBottom: '15px', color: '#444' }}>Peak Hours Analysis</h4>
+                        {(() => {
+                          // Filter out cancelled reservations and ensure time_slot is in correct format
+                          const timeSlots = allReservationsForAdmin
+                            .filter(r => r.status !== 'cancelled' && r.time_slot)
+                            .map(r => {
+                              // Ensure time_slot is in HH:mm:ss format
+                              const [hours, minutes, seconds] = r.time_slot.split(':').map(Number);
+                              return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${(seconds || 0).toString().padStart(2, '0')}`;
+                            });
+                          
+                          const timeCount = timeSlots.reduce((acc, time) => {
+                            acc[time] = (acc[time] || 0) + 1;
+                            return acc;
+                          }, {});
+
+                          const peakHours = Object.entries(timeCount)
+                            .sort(([,a], [,b]) => b - a)
+                            .slice(0, 3);
+
+                          return (
+                            <div>
+                              <p style={{ marginBottom: '10px', fontWeight: 'bold' }}>Most Popular Time Slots:</p>
+                              {peakHours.map(([time, count]) => (
+                                <div key={time} style={{ 
+                                  display: 'flex', 
+                                  justifyContent: 'space-between',
+                                  padding: '8px',
+                                  background: '#fff',
+                                  marginBottom: '5px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #eee'
+                                }}>
+                                  <span>{formatTime(time)}</span>
+                                  <span style={{ fontWeight: 'bold', color: '#b22222' }}>{count} reservations</span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Reservation Status Distribution */}
+                      <div style={{ padding: '15px', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+                        <h4 style={{ marginBottom: '15px', color: '#444' }}>Reservation Status Distribution</h4>
+                        {(() => {
+                          const statusCount = allReservationsForAdmin.reduce((acc, res) => {
+                            acc[res.status] = (acc[res.status] || 0) + 1;
+                            return acc;
+                          }, {});
+
+                          const total = Object.values(statusCount).reduce((a, b) => a + b, 0);
+
+                          return (
+                            <div>
+                              {Object.entries(statusCount).map(([status, count]) => (
+                                <div key={status} style={{ marginBottom: '10px' }}>
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    justifyContent: 'space-between',
+                                    marginBottom: '5px'
+                                  }}>
+                                    <span style={{ textTransform: 'capitalize' }}>{status}</span>
+                                    <span>{count} ({((count/total)*100).toFixed(1)}%)</span>
+                                  </div>
+                                  <div style={{
+                                    height: '8px',
+                                    background: '#e9ecef',
+                                    borderRadius: '4px',
+                                    overflow: 'hidden'
+                                  }}>
+                                    <div style={{
+                                      width: `${(count/total)*100}%`,
+                                      height: '100%',
+                                      background: status === 'confirmed' ? '#28a745' : 
+                                                status === 'cancelled' ? '#dc3545' : 
+                                                '#ffc107',
+                                      borderRadius: '4px'
+                                    }} />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Recent Activity */}
+                      <div style={{ padding: '15px', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+                        <h4 style={{ marginBottom: '15px', color: '#444' }}>Recent Activity</h4>
+                        {(() => {
+                          const recentReservations = [...allReservationsForAdmin]
+                            .sort((a, b) => new Date(b.reservation_date) - new Date(a.reservation_date))
+                            .slice(0, 5);
+
+                          return (
+                            <div>
+                              {recentReservations.map(res => {
+                                // Ensure time_slot is in HH:mm:ss format
+                                const [hours, minutes, seconds] = res.time_slot.split(':').map(Number);
+                                const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${(seconds || 0).toString().padStart(2, '0')}`;
+                                
+                                return (
+                                  <div key={res.reservation_id} style={{
+                                    padding: '10px',
+                                    background: '#fff',
+                                    marginBottom: '8px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #eee',
+                                    fontSize: '0.9em'
+                                  }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                      <span style={{ fontWeight: 'bold' }}>ID: {res.reservation_id}</span>
+                                      <span style={{ 
+                                        color: res.status === 'confirmed' ? '#28a745' : 
+                                               res.status === 'cancelled' ? '#dc3545' : 
+                                               '#ffc107',
+                                        textTransform: 'capitalize'
+                                      }}>{res.status}</span>
+                                    </div>
+                                    <div style={{ color: '#666' }}>
+                                      {formatDate(res.reservation_date)} at {formatTime(formattedTime)}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {/* Update Menu Item Stock Section */}
                 <div className="admin-section" style={{ marginBottom: '30px', padding: '20px', border: '1px solid #eee', borderRadius: '8px' }}>
                   <h3>Update Menu Item Stock</h3>
@@ -1843,7 +2041,6 @@ function App() {
                       <thead>
                         <tr>
                           <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>ID</th>
-                          <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Name</th>
                           <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Date</th>
                           <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Time</th>
                           <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Status</th>
@@ -1855,7 +2052,6 @@ function App() {
                         {allReservationsForAdmin.map(res => (
                           <tr key={res.reservation_id}>
                             <td style={{ border: '1px solid #ddd', padding: '8px' }}>{res.reservation_id}</td>
-                            <td style={{ border: '1px solid #ddd', padding: '8px' }}>{res.name}</td>
                             <td style={{ border: '1px solid #ddd', padding: '8px' }}>{formatDate(res.reservation_date)}</td>
                             <td style={{ border: '1px solid #ddd', padding: '8px' }}>{formatTime(res.time_slot)}</td>
                             <td style={{ border: '1px solid #ddd', padding: '8px' }}>{res.status}</td>
@@ -2010,3 +2206,4 @@ function App() {
 }
 
 export default App;
+

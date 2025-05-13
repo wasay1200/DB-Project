@@ -30,11 +30,12 @@ const sendReservationConfirmation = async (reservationDetails) => {
         day: 'numeric'
     });
 
-    const formattedTime = new Date(`2000-01-01T${time_slot}`).toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-    });
+    // Format time from HH:MM:SS to 12-hour format
+    const [hours, minutes] = time_slot.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    const formattedTime = `${hour12}:${minutes} ${ampm}`;
 
     // Email content
     const mailOptions = {
